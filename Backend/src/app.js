@@ -22,5 +22,14 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRouter);
 
+app.use((err, req, res, next) => {
+    console.error(err);
+
+    return res.status(500).json({
+        success: false,
+        message: "Internal server error"
+    });
+});
+
 
 module.exports = app;

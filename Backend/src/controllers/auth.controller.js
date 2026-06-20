@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const TokenBlacklist = require("../models/tokenBlacklist.model");
 
 function createAuthToken(user) {
   return jwt.sign(
@@ -31,6 +32,27 @@ async function registerUser(req, res) {
     return res.status(400).json({
       success: false,
       message: "Username, email, and password are required"
+    });
+  }
+
+  if (username.trim().length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: "Username must be at least 3 characters"
+    });
+  }
+
+  if (!email.includes("@")) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide a valid email address"
+    });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 6 characters"
     });
   }
 
@@ -70,6 +92,102 @@ async function registerUser(req, res) {
   });
 }
 
+async function loginUser(req, res) {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Email and password are required"
+    });
+  }
+
+  if (!email.includes("@")) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide a valid email address"
+    });
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid email or password"
+    });
+  }
+
+  const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordCorrect) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid email or password"
+    });
+  }
+
+  const token = createAuthToken(user);
+
+  res.cookie("token", token, getCookieOptions());
+
+  return res.status(200).json({
+    success: true,
+    message: "User logged in successfully",
+    data: {
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      }
+    }
+  });
+}
+
+async function getCurrentUser(req, res) {
+  const user = await User.findById(req.user.id).select("-password");
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found"
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Current user fetched successfully",
+    data: {
+      user
+    }
+  });
+}
+
+async function logoutUser(req, res) {
+  const token = req.cookies.token;
+
+  if (token) {
+    const decoded = jwt.decode(token);
+
+    if (decoded && decoded.exp) {
+      await TokenBlacklist.create({
+        token,
+        expiresAt: new Date(decoded.exp * 1000)
+      });
+    }
+  }
+
+  res.clearCookie("token", getCookieOptions());
+
+  return res.status(200).json({
+    success: true,
+    message: "User logged out successfully"
+  });
+}
+
 module.exports = {
-  registerUser
+  registerUser,
+  loginUser,
+  getCurrentUser,
+  logoutUser
 };
