@@ -29,6 +29,7 @@ async function requireAuth(req, res, next) {
     };
 
     next();
+    
   } catch (error) {
     return res.status(401).json({
       success: false,
@@ -39,4 +40,4 @@ async function requireAuth(req, res, next) {
 
 module.exports = {
   requireAuth
-};
+};
