@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
     BriefcaseBusiness,
     FileText,
@@ -11,7 +11,10 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../features/auth/hooks/useAuth";
-import { createInterviewReport } from "../features/interview/services/interviewApi";
+import {
+    createInterviewReport,
+    getInterviewReports
+} from "../features/interview/services/interviewApi";
 
 function Dashboard() {
     const { user, logout, isAuthLoading } = useAuth();
@@ -28,7 +31,31 @@ function Dashboard() {
     const [formSuccess, setFormSuccess] = useState("");
     const [generatedReport, setGeneratedReport] = useState(null);
     const [recentReports, setRecentReports] = useState([]);
+    const [isReportsLoading, setIsReportsLoading] = useState(true);
+    const [reportsError, setReportsError] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
+
+    useEffect(() => {
+        async function loadReports() {
+            try {
+                setIsReportsLoading(true);
+                setReportsError("");
+
+                const result = await getInterviewReports();
+                setRecentReports(result.data.reports);
+            } catch (error) {
+                const message =
+                    error.response?.data?.message ||
+                    "Unable to load previous reports";
+
+                setReportsError(message);
+            } finally {
+                setIsReportsLoading(false);
+            }
+        }
+
+        loadReports();
+    }, []);
 
     async function handleLogout() {
         try {
@@ -408,20 +435,29 @@ function Dashboard() {
 
                         <div className="mt-8 border-t border-slate-200 pt-6">
                             <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                                Recent mock reports
+                                Recent Interview Reports
                             </p>
 
-                            {recentReports.length === 0 ? (
+                            {isReportsLoading ? (
+                                <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading reports...
+                                </div>
+                            ) : reportsError ? (
+                                <p className="mt-3 text-sm leading-6 text-red-600">
+                                    {reportsError}
+                                </p>
+                            ) : recentReports.length === 0 ? (
                                 <p className="mt-3 text-sm leading-6 text-slate-500">
-                                    Generated reports will appear here during
-                                    this session.
+                                    You have not generated any interview reports yet.
                                 </p>
                             ) : (
                                 <div className="mt-4 space-y-3">
-                                    {recentReports.map((report, index) => (
-                                        <div
-                                            className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                                            key={`${report.id}-${index}`}
+                                    {recentReports.map((report) => (
+                                        <Link
+                                            className="block rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-300 hover:bg-blue-50"
+                                            key={report.id}
+                                            to={`/interview/${report.id}`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div>
@@ -430,19 +466,15 @@ function Dashboard() {
                                                     </h3>
 
                                                     <p className="mt-1 text-xs text-slate-500">
-                                                        {report.createdAt
-                                                            ? new Date(
-                                                                  report.createdAt
-                                                              ).toLocaleString()
-                                                            : "Temporary session report"}
+                                                        {new Date(report.createdAt).toLocaleString()}
                                                     </p>
                                                 </div>
 
-                                                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                                                <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
                                                     {report.matchScore}%
                                                 </span>
                                             </div>
-                                        </div>
+                                        </Link>
                                     ))}
                                 </div>
                             )}

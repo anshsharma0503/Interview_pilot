@@ -1,4 +1,9 @@
 const { PDFParse } = require("pdf-parse");
+const InterviewReport = require("../models/interviewReport.model");
+const {
+    generateInterviewReport
+} = require("../services/gemini.service");
+const mongoose = require("mongoose");
 
 async function createInterviewReport(req, res) {
     const { jobDescription, selfDescription } = req.body;
@@ -51,44 +56,49 @@ async function createInterviewReport(req, res) {
         });
     }
 
-    const mockReport = {
-        id: `mock-${Date.now()}`,
-        title: "Mock Interview Report",
-        matchScore: 72,
-        summary:
-            "Your resume was uploaded and processed successfully. Gemini analysis will be added later.",
+    const generatedReport = await generateInterviewReport({
+        resumeText,
+        jobDescription: jobDescription.trim(),
+        selfDescription: selfDescription.trim()
+    });
 
-        resumeInfo: {
-            fileName: req.file.originalname,
-            fileSize: req.file.size,
-            extractedCharacters: resumeText.length,
-            preview: resumeText.slice(0, 200)
-        },
-
-        receivedInput: {
-            jobDescription,
-            selfDescription
-        },
-
+    const savedReport = await InterviewReport.create({
         createdBy: req.user.id,
-        createdAt: new Date().toISOString()
-    };
+        title: generatedReport.title,
+        jobDescription: jobDescription.trim(),
+        selfDescription: selfDescription.trim(),
+        resumeFileName: req.file.originalname,
+        resumeText,
+        matchScore: generatedReport.matchScore,
+        summary: generatedReport.summary,
+        strengths: generatedReport.strengths,
+        skillGaps: generatedReport.skillGaps,
+        interviewQuestions: generatedReport.interviewQuestions,
+        preparationPlan: generatedReport.preparationPlan,
+        resumeSuggestions: generatedReport.resumeSuggestions
+    });
 
     return res.status(201).json({
         success: true,
-        message: "Interview report created successfully",
+        message: "Interview report generated successfully",
         data: {
-            report: mockReport
+            report: savedReport
         }
     });
 }
 
 async function getInterviewReports(req, res) {
+    const reports = await InterviewReport.find({
+        createdBy: req.user.id
+    }).sort({
+        createdAt: -1
+    });
+
     return res.status(200).json({
         success: true,
         message: "Interview reports fetched successfully",
         data: {
-            reports: []
+            reports
         }
     });
 }
@@ -96,19 +106,30 @@ async function getInterviewReports(req, res) {
 async function getInterviewReportById(req, res) {
     const { reportId } = req.params;
 
+    if (!mongoose.isValidObjectId(reportId)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid report ID"
+        });
+    }
+
+    const report = await InterviewReport.findOne({
+        _id: reportId,
+        createdBy: req.user.id
+    });
+
+    if (!report) {
+        return res.status(404).json({
+            success: false,
+            message: "Interview report not found"
+        });
+    }
+
     return res.status(200).json({
         success: true,
         message: "Interview report fetched successfully",
         data: {
-            report: {
-                id: reportId,
-                title: "Mock Interview Report",
-                matchScore: 72,
-                summary:
-                    "This is a placeholder report detail response. Later this will come from MongoDB.",
-                createdBy: req.user.id,
-                createdAt: new Date().toISOString()
-            }
+            report
         }
     });
 }
