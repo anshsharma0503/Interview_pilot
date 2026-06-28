@@ -8,12 +8,14 @@ const {
 
 const { requireAuth } = require("../middlewares/auth.middleware");
 const asyncHandler = require("../utils/asyncHandler");
+const uploadResume = require("../middlewares/fileUpload.middleware");
 
 const interviewRouter = express.Router();
 
 interviewRouter.post(
     "/",
     asyncHandler(requireAuth),
+    uploadResume.single("resume"),
     asyncHandler(createInterviewReport)
 );
 

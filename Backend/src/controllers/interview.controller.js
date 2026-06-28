@@ -1,3 +1,5 @@
+const { PDFParse } = require("pdf-parse");
+
 async function createInterviewReport(req, res) {
     const { jobDescription, selfDescription } = req.body;
 
@@ -22,16 +24,52 @@ async function createInterviewReport(req, res) {
         });
     }
 
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            message: "Please upload your resume as a PDF"
+        });
+    }
+
+    const parser = new PDFParse({
+        data: req.file.buffer
+    });
+
+    let resumeText;
+
+    try {
+        const result = await parser.getText();
+        resumeText = result.text.trim();
+    } finally {
+        await parser.destroy();
+    }
+
+    if (!resumeText) {
+        return res.status(400).json({
+            success: false,
+            message: "No readable text was found in the resume"
+        });
+    }
+
     const mockReport = {
         id: `mock-${Date.now()}`,
         title: "Mock Interview Report",
         matchScore: 72,
         summary:
-            "This is a temporary response. Later, Gemini will generate a real interview report.",
+            "Your resume was uploaded and processed successfully. Gemini analysis will be added later.",
+
+        resumeInfo: {
+            fileName: req.file.originalname,
+            fileSize: req.file.size,
+            extractedCharacters: resumeText.length,
+            preview: resumeText.slice(0, 200)
+        },
+
         receivedInput: {
             jobDescription,
             selfDescription
         },
+
         createdBy: req.user.id,
         createdAt: new Date().toISOString()
     };

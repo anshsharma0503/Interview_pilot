@@ -28,7 +28,6 @@ function InterviewReport() {
         setIsLoading(false);
       }
     }
-
     loadReport();
   }, [reportId]);
 
