@@ -28,7 +28,7 @@ function Login() {
         try {
             await login(formData);
             navigate("/");
-        } catch (error) {
+        } catch {
             // Error message already lives in authError.
         }
     }

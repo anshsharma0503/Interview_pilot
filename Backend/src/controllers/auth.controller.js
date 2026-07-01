@@ -26,7 +26,8 @@ function getCookieOptions() {
 }
 
 async function registerUser(req, res) {
-  const { username, email, password } = req.body;
+  const { username, email: rawEmail, password } = req.body;
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
 
   if (!username || !email || !password) {
     return res.status(400).json({
@@ -42,7 +43,8 @@ async function registerUser(req, res) {
     });
   }
 
-  if (!email.includes("@")) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
     return res.status(400).json({
       success: false,
       message: "Please provide a valid email address"
@@ -93,7 +95,8 @@ async function registerUser(req, res) {
 }
 
 async function loginUser(req, res) {
-  const { email, password } = req.body;
+  const { email: rawEmail, password } = req.body;
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
 
   if (!email || !password) {
     return res.status(400).json({
@@ -102,7 +105,8 @@ async function loginUser(req, res) {
     });
   }
 
-  if (!email.includes("@")) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
     return res.status(400).json({
       success: false,
       message: "Please provide a valid email address"

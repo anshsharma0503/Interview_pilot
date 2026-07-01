@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   getCurrentUser,
@@ -6,8 +6,7 @@ import {
   logoutUser,
   registerUser
 } from "../services/authApi";
-
-export const AuthContext = createContext(null);
+import { AuthContext } from "./authContextValue";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -21,7 +20,7 @@ export function AuthProvider({ children }) {
 
       const result = await getCurrentUser();
       setUser(result.data.user);
-    } catch (error) {
+    } catch {
       setUser(null);
     } finally {
       setIsAuthLoading(false);
@@ -41,7 +40,7 @@ export function AuthProvider({ children }) {
       const message =
         error.response?.data?.message || "Unable to create account";
       setAuthError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     } finally {
       setIsAuthLoading(false);
     }
@@ -59,7 +58,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       const message = error.response?.data?.message || "Unable to log in";
       setAuthError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     } finally {
       setIsAuthLoading(false);
     }
@@ -75,14 +74,38 @@ export function AuthProvider({ children }) {
     } catch (error) {
       const message = error.response?.data?.message || "Unable to log out";
       setAuthError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     } finally {
       setIsAuthLoading(false);
     }
   }
 
   useEffect(() => {
-    refreshUser();
+    let isActive = true;
+
+    async function loadCurrentUser() {
+      try {
+        const result = await getCurrentUser();
+
+        if (isActive) {
+          setUser(result.data.user);
+        }
+      } catch {
+        if (isActive) {
+          setUser(null);
+        }
+      } finally {
+        if (isActive) {
+          setIsAuthLoading(false);
+        }
+      }
+    }
+
+    loadCurrentUser();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const value = useMemo(

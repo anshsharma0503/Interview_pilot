@@ -29,7 +29,7 @@ function Register() {
     try {
       await register(formData);
       navigate("/");
-    } catch (error) {
+    } catch {
       // Error message already lives in authError.
     }
   }

@@ -66,7 +66,8 @@ function InterviewReport() {
             link.remove();
 
             URL.revokeObjectURL(fileUrl);
-        } catch (error) {
+        } catch (err) {
+            console.error("Resume download failed:", err);
             setDownloadError(
                 "Unable to generate the tailored resume. Please try again."
             );
@@ -168,6 +169,12 @@ function InterviewReport() {
                                     </>
                                 )}
                             </button>
+
+                            {downloadError ? (
+                                <p className="max-w-56 text-sm leading-5 text-red-600" role="alert">
+                                    {downloadError}
+                                </p>
+                            ) : null}
                         </div>
                     </div>
 
