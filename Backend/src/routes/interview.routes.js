@@ -1,9 +1,9 @@
 const express = require("express");
-
 const {
     createInterviewReport,
     getInterviewReports,
-    getInterviewReportById
+    getInterviewReportById,
+    downloadTailoredResume
 } = require("../controllers/interview.controller");
 
 const { requireAuth } = require("../middlewares/auth.middleware");
@@ -29,6 +29,12 @@ interviewRouter.get(
     "/:reportId",
     asyncHandler(requireAuth),
     asyncHandler(getInterviewReportById)
+);
+
+interviewRouter.get(
+    "/:reportId/resume",
+    asyncHandler(requireAuth),
+    asyncHandler(downloadTailoredResume)
 );
 
 module.exports = interviewRouter;

@@ -30,3 +30,14 @@ export async function getInterviewReportById(reportId) {
 
   return response.data;
 } 
+
+export async function downloadTailoredResume(reportId) {
+    const response = await apiClient.get(
+        `/api/interview/${reportId}/resume`,
+        {
+            responseType: "blob"
+        }
+    );
+
+    return response.data;
+}

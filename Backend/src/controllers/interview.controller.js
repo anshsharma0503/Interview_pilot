@@ -1,9 +1,12 @@
 const { PDFParse } = require("pdf-parse");
 const InterviewReport = require("../models/interviewReport.model");
 const {
-    generateInterviewReport
+    generateInterviewReport,
+    generateTailoredResume
 } = require("../services/gemini.service");
 const mongoose = require("mongoose");
+const puppeteer = require("puppeteer");
+const { buildResumeHtml } = require("../utils/resumeTemplate");
 
 async function createInterviewReport(req, res) {
     const { jobDescription, selfDescription } = req.body;
@@ -134,8 +137,77 @@ async function getInterviewReportById(req, res) {
     });
 }
 
+async function downloadTailoredResume(req, res) {
+    const { reportId } = req.params;
+
+    if (!mongoose.isValidObjectId(reportId)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid report ID"
+        });
+    }
+
+    const report = await InterviewReport.findOne({
+        _id: reportId,
+        createdBy: req.user.id
+    }).select("+resumeText +tailoredResume");
+
+    if (!report) {
+        return res.status(404).json({
+            success: false,
+            message: "Interview report not found"
+        });
+    }
+
+    let tailoredResume = report.tailoredResume;
+
+    if (!tailoredResume) {
+        tailoredResume = await generateTailoredResume({
+            resumeText: report.resumeText,
+            jobDescription: report.jobDescription,
+            selfDescription: report.selfDescription
+        });
+
+        report.tailoredResume = tailoredResume;
+        report.markModified("tailoredResume");
+
+        await report.save();
+    }
+
+    const resumeHtml = buildResumeHtml(tailoredResume);
+
+    const browser = await puppeteer.launch({
+        headless: true
+    });
+
+    try {
+        const page = await browser.newPage();
+
+        await page.setContent(resumeHtml, {
+            waitUntil: "domcontentloaded"
+        });
+
+        const pdf = await page.pdf({
+            format: "A4",
+            printBackground: true,
+            preferCSSPageSize: true
+        });
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+            "Content-Disposition",
+            'attachment; filename="tailored-resume.pdf"'
+        );
+
+        return res.send(Buffer.from(pdf));
+    } finally {
+        await browser.close();
+    }
+}
+
 module.exports = {
     createInterviewReport,
     getInterviewReports,
-    getInterviewReportById
+    getInterviewReportById,
+    downloadTailoredResume
 };

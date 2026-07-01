@@ -60,6 +60,11 @@ const interviewReportSchema = new mongoose.Schema(
             required: true,
             select: false
         },
+        tailoredResume: {
+            type: mongoose.Schema.Types.Mixed,
+            default: null,
+            select: false
+        },
 
         matchScore: {
             type: Number,

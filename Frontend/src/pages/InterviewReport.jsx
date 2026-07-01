@@ -9,10 +9,14 @@ import {
     Lightbulb,
     ListChecks,
     Loader2,
+    Download,
     MessageSquareText
 } from "lucide-react";
 
-import { getInterviewReportById } from "../features/interview/services/interviewApi";
+import {
+    downloadTailoredResume,
+    getInterviewReportById
+} from "../features/interview/services/interviewApi";
 
 function InterviewReport() {
     const { reportId } = useParams();
@@ -20,6 +24,8 @@ function InterviewReport() {
     const [report, setReport] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pageError, setPageError] = useState("");
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [downloadError, setDownloadError] = useState("");
 
     useEffect(() => {
         async function loadReport() {
@@ -42,6 +48,32 @@ function InterviewReport() {
 
         loadReport();
     }, [reportId]);
+
+    async function handleDownloadResume() {
+        try {
+            setIsDownloading(true);
+            setDownloadError("");
+
+            const pdfBlob = await downloadTailoredResume(reportId);
+            const fileUrl = URL.createObjectURL(pdfBlob);
+
+            const link = document.createElement("a");
+            link.href = fileUrl;
+            link.download = "tailored-resume.pdf";
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            URL.revokeObjectURL(fileUrl);
+        } catch (error) {
+            setDownloadError(
+                "Unable to generate the tailored resume. Please try again."
+            );
+        } finally {
+            setIsDownloading(false);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -107,13 +139,35 @@ function InterviewReport() {
                             </div>
                         </div>
 
-                        <div className="shrink-0 rounded-lg bg-emerald-50 px-5 py-3 text-center">
-                            <p className="text-2xl font-bold text-emerald-700">
-                                {report.matchScore}%
-                            </p>
-                            <p className="text-xs font-semibold text-emerald-700">
-                                Job match
-                            </p>
+                        <div className="flex shrink-0 flex-col gap-3">
+                            <div className="rounded-lg bg-emerald-50 px-5 py-3 text-center">
+                                <p className="text-2xl font-bold text-emerald-700">
+                                    {report.matchScore}%
+                                </p>
+
+                                <p className="text-xs font-semibold text-emerald-700">
+                                    Job match
+                                </p>
+                            </div>
+
+                            <button
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                                type="button"
+                                onClick={handleDownloadResume}
+                                disabled={isDownloading}
+                            >
+                                {isDownloading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="h-4 w-4" />
+                                        Download resume
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
 
@@ -130,8 +184,8 @@ function InterviewReport() {
                             <span className="font-medium text-slate-700">
                                 {report.createdAt
                                     ? new Date(
-                                          report.createdAt
-                                      ).toLocaleString()
+                                        report.createdAt
+                                    ).toLocaleString()
                                     : "Not available"}
                             </span>
                         </p>
